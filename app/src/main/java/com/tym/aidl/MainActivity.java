@@ -14,6 +14,12 @@ import android.widget.Button;
 
 import java.util.List;
 
+import rx.Observable;
+import rx.Scheduler;
+import rx.functions.Action1;
+import rx.functions.Func0;
+import rx.schedulers.Schedulers;
+
 public class MainActivity extends AppCompatActivity implements View.OnClickListener {
 
     private static final int DEATHCODE = 0;
@@ -25,6 +31,8 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     private Button addBook, queryBooks, register, unregister;
 
     private List<Book> mBookList;
+
+    private BinderPool mBinderPool;
 
     private ServiceConnection mServiceConnection = new ServiceConnection() {
         @Override
@@ -61,8 +69,9 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+
         mBookServiceIntent = new Intent(this, BookManagerService.class);
-        bindService(mBookServiceIntent, mServiceConnection, Context.BIND_AUTO_CREATE);
+//        bindService(mBookServiceIntent, mServiceConnection, Context.BIND_AUTO_CREATE);
         addBook = (Button) findViewById(R.id.add_book);
         queryBooks = (Button) findViewById(R.id.query_books);
         addBook.setOnClickListener(this);
@@ -78,7 +87,8 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         try {
             switch (v.getId()) {
                 case R.id.add_book:
-                    mIBookManager.addBook(new Book("tym", "添加"));
+//                    mIBookManager.addBook(new Book("tym", "添加"));
+                    deleteBook();
                     break;
                 case R.id.query_books:
                     mBookList = mIBookManager.getBooks();
@@ -108,6 +118,26 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         }
         unbindService(mServiceConnection);
         super.onDestroy();
+    }
+
+    private void deleteBook() {
+        Observable.just(1)
+                .subscribeOn(Schedulers.io())
+                .observeOn(Schedulers.io())
+                .subscribe(new Action1<Integer>() {
+                    @Override
+                    public void call(Integer integer) {
+                        mBinderPool = BinderPool.getInstance(MainActivity.this, true);
+                        IBinder deleteBook = mBinderPool.queryBinder(BinderPool.BINDER_DELETE);
+                        IDeleteBook dleteBookImpl = DeleteBookImpl.asInterface(deleteBook);
+                        try {
+                            dleteBookImpl.deleteOne(new Book("tym", "delete"));
+                        } catch (RemoteException e) {
+                            e.printStackTrace();
+                        }
+                    }
+                });
+
     }
 
     private IOnNewBookArrivedListener mIOnNewBookArrivedListener = new IOnNewBookArrivedListener.Stub() {

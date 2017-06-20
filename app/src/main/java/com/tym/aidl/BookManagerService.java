@@ -2,6 +2,7 @@ package com.tym.aidl;
 
 import android.app.Service;
 import android.content.Intent;
+import android.content.pm.PackageManager;
 import android.os.Binder;
 import android.os.IBinder;
 import android.os.RemoteCallbackList;
@@ -25,6 +26,8 @@ import rx.functions.Func1;
  * @Description
  */
 public class BookManagerService extends Service {
+
+    public static final String PERMISSION="com.tym.aidl.permission.ACCESS_BOOK_SERVICE";
 
     private CopyOnWriteArrayList<Book> mBookList = new CopyOnWriteArrayList<>();
 
@@ -69,6 +72,10 @@ public class BookManagerService extends Service {
 
     @Override
     public IBinder onBind(Intent intent) {
+//        int permission=checkCallingOrSelfPermission(PERMISSION);
+//        if (permission== PackageManager.PERMISSION_DENIED){
+//            return null;
+//        }
         mServiceIsDestroy.set(true);
         newBookArrive();
         return bookBinder;
