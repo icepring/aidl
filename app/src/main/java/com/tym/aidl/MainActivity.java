@@ -4,10 +4,10 @@ import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
 import android.content.ServiceConnection;
+import android.os.Bundle;
 import android.os.IBinder;
 import android.os.RemoteException;
 import android.support.v7.app.AppCompatActivity;
-import android.os.Bundle;
 import android.util.Log;
 import android.view.View;
 import android.widget.Button;
@@ -18,20 +18,21 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 
     private static final int DEATHCODE = 0;
 
-    private IBookManagerInterface mIBookManagerInterface;
+    private IBookManager mIBookManager;
 
     private Intent mBookServiceIntent;
 
-    private Button addBook, queryBooks;
+    private Button addBook, queryBooks, register, unregister;
 
     private List<Book> mBookList;
 
     private ServiceConnection mServiceConnection = new ServiceConnection() {
         @Override
         public void onServiceConnected(ComponentName name, IBinder service) {
-            mIBookManagerInterface = IBookManagerInterface.Stub.asInterface(service);
+            mIBookManager = IBookManager.Stub.asInterface(service);
             try {
-                mIBookManagerInterface.asBinder().linkToDeath(mDeathRecipient, DEATHCODE);
+                mIBookManager.asBinder().linkToDeath(mDeathRecipient, DEATHCODE);
+                mIBookManager.registerOnNewBookArrived(mIOnNewBookArrivedListener);
             } catch (RemoteException e) {
                 e.printStackTrace();
             }
@@ -39,18 +40,18 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 
         @Override
         public void onServiceDisconnected(ComponentName name) {
-            mIBookManagerInterface = null;
+            mIBookManager = null;
         }
     };
 
     private IBinder.DeathRecipient mDeathRecipient = new IBinder.DeathRecipient() {
         @Override
         public void binderDied() {
-            if (mIBookManagerInterface == null) {
+            if (mIBookManager == null) {
                 return;
             }
-            mIBookManagerInterface.asBinder().unlinkToDeath(mDeathRecipient, DEATHCODE);
-            mIBookManagerInterface = null;
+            mIBookManager.asBinder().unlinkToDeath(mDeathRecipient, DEATHCODE);
+            mIBookManager = null;
             // TODO 在这里可以重连
             bindService(mBookServiceIntent, mServiceConnection, Context.BIND_AUTO_CREATE);
         }
@@ -66,6 +67,10 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         queryBooks = (Button) findViewById(R.id.query_books);
         addBook.setOnClickListener(this);
         queryBooks.setOnClickListener(this);
+        register = (Button) findViewById(R.id.register_book);
+        unregister = (Button) findViewById(R.id.unregister_books);
+        register.setOnClickListener(this);
+        unregister.setOnClickListener(this);
     }
 
     @Override
@@ -73,13 +78,16 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         try {
             switch (v.getId()) {
                 case R.id.add_book:
-                    mIBookManagerInterface.addBook(new Book("tym", "添加"));
+                    mIBookManager.addBook(new Book("tym", "添加"));
                     break;
                 case R.id.query_books:
-                    mBookList = mIBookManagerInterface.getBooks();
-                    for (Book book:mBookList){
-                        Log.e("BookManagerService",book.toString());
-                    }
+                    mBookList = mIBookManager.getBooks();
+                    break;
+                case R.id.register_book:
+                    mIBookManager.registerOnNewBookArrived(mIOnNewBookArrivedListener);
+                    break;
+                case R.id.unregister_books:
+                    mIBookManager.unregisterOnNewBookArrived(mIOnNewBookArrivedListener);
                     break;
                 default:
 
@@ -91,7 +99,28 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 
     @Override
     protected void onDestroy() {
+        if (mIBookManager != null && mIBookManager.asBinder().isBinderAlive()) {
+            try {
+                mIBookManager.unregisterOnNewBookArrived(mIOnNewBookArrivedListener);
+            } catch (RemoteException e) {
+                e.printStackTrace();
+            }
+        }
         unbindService(mServiceConnection);
         super.onDestroy();
     }
+
+    private IOnNewBookArrivedListener mIOnNewBookArrivedListener = new IOnNewBookArrivedListener.Stub() {
+
+        @Override
+        public void basicTypes(int anInt, long aLong, boolean aBoolean, float aFloat, double aDouble, String aString) throws RemoteException {
+
+        }
+
+        @Override
+        public void onNewBookArrived(Book book) throws RemoteException {
+            Log.e("onNewBookArrived", book.toString());
+        }
+
+    };
 }

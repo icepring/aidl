@@ -21,4 +21,18 @@
         android:layout_height="wrap_content"
         android:text="query books"/>
 
+    <Button
+        android:layout_marginTop="10dp"
+        android:id="@+id/register_book"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="register book"/>
+
+    <Button
+        android:layout_marginTop="10dp"
+        android:id="@+id/unregister_books"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="unregister books"/>
+
 </LinearLayout>
